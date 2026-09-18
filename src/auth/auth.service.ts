@@ -2,10 +2,12 @@ import {Injectable, NotFoundException, UnauthorizedException} from '@nestjs/comm
 import {UserService} from "../user/user.service.js";
 import {registerDto} from "./dto/register.dto.js";
 import {verify, hash} from "argon2";
+import {AuthUser} from "./types/auth-user.type.js";
+import {JwtService} from "@nestjs/jwt";
 
 @Injectable()
 export class AuthService {
-    constructor(private readonly userService: UserService) {}
+    constructor(private readonly userService: UserService, private readonly JwtService: JwtService) {}
 
     async register(registerDto: registerDto){
         const {email, password, confirmPassword} = registerDto;
@@ -33,7 +35,14 @@ export class AuthService {
         return user
     }
 
-    async login(){
+    async login(user: AuthUser) {
 
+        const payload = {
+            email: user.email,
+            sub: user.id
+        }
+
+        const accessToken = await this.JwtService.signAsync(payload);
+        return {accessToken};
     }
 }
