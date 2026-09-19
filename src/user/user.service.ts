@@ -9,7 +9,8 @@ export class UserService {
         return this.PrismaService.user.create({
             data:{
                 email,
-                passwordHash
+                passwordHash,
+                role: "USER"
             }
         })
     }
