@@ -6,10 +6,10 @@ import slugify from "slugify";
 
 @Injectable()
 export class OrganizationService {
-  constructor(private readonly PrismaService: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async createOrganization(dto: createOrganizationDto, user:AuthUser) {
-    return await this.PrismaService.organization.create({
+    return await this.prisma.organization.create({
       data:{
         name: dto.name,
         slug: slugify(dto.name, {lower: true, strict: true}),
@@ -25,5 +25,29 @@ export class OrganizationService {
   }
 
 
+  async getOrganizations(user: AuthUser) {
+    return this.prisma.organization.findMany({
+      where: {
+        memberships: {
+          some: {
+            userId: user.id
+          }
+        }
+      }
+    })
 
+  }
+
+  async getOrganizationById(id: any, user: AuthUser) {
+    return this.prisma.organization.findUnique({
+      where:{
+        id,
+        memberships: {
+          some:{
+            userId: user.id
+          }
+        }
+      }
+    })
+  }
 }
