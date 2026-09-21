@@ -4,6 +4,7 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { createOrganizationDto } from "./dtos/create-organization.dto.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import type { AuthUser } from "../auth/types/auth-user.type.js";
+import {AddMemberToOrganizationDto} from "./dtos/add-member.dto.js";
 
 @Controller("organization")
 @UseGuards(JwtAuthGuard)
@@ -29,5 +30,10 @@ export class OrganizationController {
   @Get("/:id")
   getOrganization(@Param("id") id: number, @CurrentUser() user: AuthUser) {
     return this.OrganizationService.getOrganizationById(id, user);
+  }
+
+  @Post('/:id/members')
+  addMemberToOrganization(@Param("id") id: string, @CurrentUser() user: AuthUser, @Body() addMemberDto: AddMemberToOrganizationDto) {
+    return this.OrganizationService.addMemberToOrganization(id, addMemberDto,user);
   }
 }

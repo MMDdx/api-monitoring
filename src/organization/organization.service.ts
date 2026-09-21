@@ -1,8 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException
+} from '@nestjs/common';
 import  {PrismaService} from '../prisma/prisma.service.js';
 import { createOrganizationDto } from "./dtos/create-organization.dto.js";
 import { AuthUser } from "../auth/types/auth-user.type.js";
 import slugify from "slugify";
+import {AddMemberToOrganizationDto} from "./dtos/add-member.dto.js";
+import { Prisma } from '../generated/prisma/client.js';
 
 @Injectable()
 export class OrganizationService {
@@ -49,5 +57,47 @@ export class OrganizationService {
         }
       }
     })
+  }
+
+  async addMemberToOrganization(id: string, addMemberDto: AddMemberToOrganizationDto, user: AuthUser) {
+    const organization = await this.prisma.organization.findUnique({
+        where:{
+          id
+        },
+      include: {
+          memberships: true
+      }
+    });
+    if (!organization) {
+      throw new NotFoundException("Organization not found!");
+    }
+    if(!organization.memberships.find((obj)=> {
+      return obj.userId == user.id && (obj.role == "ADMIN" || obj.role == "OWNER")
+    })) {
+      throw new ForbiddenException("Not Allowed to do this!")
+    }
+
+    if (organization.memberships.find((obj)=> {}))
+
+      try {
+        return await this.prisma.organizationMember.create({
+          data: {
+            organizationId: id,
+            userId: addMemberDto.memberId,
+            role: addMemberDto.role,
+          },
+        });
+      } catch (error) {
+        if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === 'P2002'
+        ) {
+          throw new ConflictException(
+              'User is already a member of this organization.',
+          );
+        }
+
+        throw error;
+      }
   }
 }

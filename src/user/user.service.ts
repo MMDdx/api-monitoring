@@ -3,10 +3,10 @@ import {PrismaService} from "../prisma/prisma.service.js";
 
 @Injectable()
 export class UserService {
-    constructor(private PrismaService: PrismaService) {}
+    constructor(private prisma: PrismaService) {}
 
     async createUser(email: string, passwordHash: string) {
-        return this.PrismaService.user.create({
+        return this.prisma.user.create({
             data:{
                 email,
                 passwordHash,
@@ -16,7 +16,7 @@ export class UserService {
     }
 
     async findUserByEmail(email: string) {
-        return this.PrismaService.user.findFirst({
+        return this.prisma.user.findFirst({
             where: {email}
         })
     }
