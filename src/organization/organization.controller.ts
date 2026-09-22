@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, UseGuards } from "@nestjs/common";
 import { OrganizationService } from "./organization.service.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { createOrganizationDto } from "./dtos/create-organization.dto.js";
@@ -36,4 +36,10 @@ export class OrganizationController {
   addMemberToOrganization(@Param("id") id: string, @CurrentUser() user: AuthUser, @Body() addMemberDto: AddMemberToOrganizationDto) {
     return this.OrganizationService.addMemberToOrganization(id, addMemberDto,user);
   }
+
+  @Delete('/:id/members/:memberId')
+  deleteMemberFromOrganization(@Param("memberId") memberId: string, @Param('id') id: string,@CurrentUser() user: AuthUser) {
+    return this.OrganizationService.deleteMemberFromOrganization(id, memberId, user);
+  }
+
 }
