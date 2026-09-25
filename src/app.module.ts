@@ -6,6 +6,7 @@ import { UserModule } from "./user/user.module.js";
 import { ConfigModule } from "@nestjs/config";
 import {PrismaModule} from "./prisma/prisma.module.js";
 import { OrganizationModule } from './organization/organization.module.js';
+import { MonitorModule } from './monitor/monitor.module.js';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { OrganizationModule } from './organization/organization.module.js';
     }),
     PrismaModule,
     OrganizationModule,
+    MonitorModule,
   ],
 
   controllers: [AppController],
