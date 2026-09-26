@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, UseGuards } from "@nestjs/common";
+import {Body, Controller, Get, Param, Post, UseGuards} from "@nestjs/common";
 import { MonitorService } from "./monitor.service.js";
 import { CreateMonitorDto } from "./dtos/create-monitor.dto.js";
 import type { AuthUser } from "../auth/types/auth-user.type.js";
@@ -13,5 +13,10 @@ export class MonitorController {
   @Post()
   createMonitor(@Body() createMonitorDto: CreateMonitorDto, @Param("organizationId") organizationId: string, @CurrentUser() user: AuthUser) {
     return this.monitorService.createMonitor(organizationId, createMonitorDto,user);
+  }
+
+  @Get()
+  getAllMonitors(@Param("organizationId") organizationId: string,@CurrentUser() user: AuthUser) {
+    return this.monitorService.getAllMonitors(organizationId, user);
   }
 }

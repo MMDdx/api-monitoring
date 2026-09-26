@@ -8,7 +8,7 @@ export class CreateMonitorDto {
   @IsNotEmpty()
   url: string;
   @IsInt()
-  @IsNotEmpty()
   intervalSeconds: number;
+  @IsInt()
   timeoutSeconds: number;
 }
