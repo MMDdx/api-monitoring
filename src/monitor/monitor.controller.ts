@@ -1,9 +1,10 @@
-import {Body, Controller, Get, Param, Post, UseGuards} from "@nestjs/common";
+import {Body, Controller, Delete, Get, Param, Patch, Post, UseGuards} from "@nestjs/common";
 import { MonitorService } from "./monitor.service.js";
 import { CreateMonitorDto } from "./dtos/create-monitor.dto.js";
 import type { AuthUser } from "../auth/types/auth-user.type.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
+import {UpdateMonitorDto} from "./dtos/update-monitor.dto.js";
 
 @Controller("organizations/:organizationId/monitors")
 @UseGuards(JwtAuthGuard)
@@ -19,4 +20,21 @@ export class MonitorController {
   getAllMonitors(@Param("organizationId") organizationId: string,@CurrentUser() user: AuthUser) {
     return this.monitorService.getAllMonitors(organizationId, user);
   }
+
+  @Get('/:monitorId')
+  getMonitorById(@Param("monitorId") monitorId: string, @Param('organizationId') organizationId: string,@CurrentUser() user: AuthUser) {
+    return this.monitorService.getMonitorById(monitorId, organizationId,user);
+  }
+
+
+  @Patch('/:monitorId')
+  updateMonitor(@Body() updateDto: UpdateMonitorDto,@Param("monitorId") monitorId: string, @Param('organizationId') organizationId: string, @CurrentUser() user: AuthUser) {
+    return this.monitorService.updateMonitor(updateDto ,monitorId, organizationId, user);
+  }
+
+  @Delete('/:monitorId')
+  deleteMonitor(@Param("monitorId") monitorId: string, @Param("organizationId") organizationId :string,@CurrentUser() user: AuthUser) {
+    return this.monitorService.deleteMonitor(monitorId, organizationId, user);
+  }
+
 }

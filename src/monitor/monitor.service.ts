@@ -3,6 +3,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { CreateMonitorDto } from "./dtos/create-monitor.dto.js";
 import { AuthUser } from "../auth/types/auth-user.type.js";
 import {OrganizationMember} from "../generated/prisma/client.js";
+import {UpdateMonitorDto} from "./dtos/update-monitor.dto.js";
 
 @Injectable()
 export class MonitorService {
@@ -34,6 +35,70 @@ export class MonitorService {
     })
   }
 
+  async getMonitorById(monitorId: string, organizationId: string,user: AuthUser) {
+    const {} = await this.getOrganizationWithMembership(organizationId, user.id);
+
+    const monitor = await this.prisma.monitor.findUnique({
+      where: {
+        id: monitorId
+      }
+    })
+    if(!monitor) {
+      throw new NotFoundException(`Monitor with id ${monitorId} not found!`)
+    }
+    return monitor;
+  }
+
+
+  async updateMonitor(updateDto: UpdateMonitorDto,monitorId: string, organizationId: string, user: AuthUser) {
+    const {membership} = await this.getOrganizationWithMembership(organizationId, user.id);
+    this.assertOrganizationAdmin(membership);
+
+    const monitor = await this.prisma.monitor.findFirst({
+      where: {
+        id: monitorId,
+        organizationId,
+      },
+    });
+
+    if (!monitor) {
+      throw new NotFoundException('Monitor not found.');
+    }
+
+    return this.prisma.monitor.update({
+      where: {
+        id: monitorId,
+      },
+      data: {
+        name: updateDto.name,
+        intervalSeconds: updateDto.intervalSeconds,
+        timeoutSeconds: updateDto.timeoutSeconds,
+      },
+    });
+  }
+
+
+  async deleteMonitor(monitorId: string, organizationId: string, user: AuthUser) {
+    const {membership} = await this.getOrganizationWithMembership(organizationId, user.id);
+    this.assertOrganizationAdmin(membership);
+
+    const monitor = await this.prisma.monitor.findFirst({
+      where: {
+        id: monitorId,
+        organizationId,
+      }
+    })
+    if(!monitor) {
+      throw new NotFoundException('Monitor not found!');
+    }
+
+    return this.prisma.monitor.delete({
+      where: {
+        id: monitorId,
+      }
+    })
+
+  }
   private async getOrganizationWithMembership(
       organizationId: string,
       userId: string,
@@ -73,6 +138,7 @@ export class MonitorService {
       throw new ForbiddenException("you are not allowed to do this!");
     }
   }
+
 
 
 }
