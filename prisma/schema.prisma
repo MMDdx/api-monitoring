@@ -28,8 +28,7 @@ enum MonitorType {
 }
 
 enum MonitorStatus {
-  UP
-  DOWN
+  ACTIVE
   PAUSED
 }
 

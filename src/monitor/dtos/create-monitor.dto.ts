@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsString } from "class-validator";
+import { IsInt, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class CreateMonitorDto {
   @IsString()
@@ -8,7 +8,9 @@ export class CreateMonitorDto {
   @IsNotEmpty()
   url: string;
   @IsInt()
+  @IsOptional()
   intervalSeconds: number;
   @IsInt()
+  @IsOptional()
   timeoutSeconds: number;
 }

@@ -9,49 +9,71 @@ import {UpdateMonitorDto} from "./dtos/update-monitor.dto.js";
 export class MonitorService {
   constructor(private readonly prisma: PrismaService) {}
 
-
-  async createMonitor(organizationId: string, createMonitorDto: CreateMonitorDto, user: AuthUser) {
-    const {membership} = await this.getOrganizationWithMembership(organizationId, user.id)
-    this.assertOrganizationAdmin(membership)
+  async createMonitor(
+    organizationId: string,
+    createMonitorDto: CreateMonitorDto,
+    user: AuthUser,
+  ) {
+    const { membership } = await this.getOrganizationWithMembership(
+      organizationId,
+      user.id,
+    );
+    this.assertOrganizationAdmin(membership);
     return this.prisma.monitor.create({
-      data:{
+      data: {
         name: createMonitorDto.name,
         url: createMonitorDto.url,
         timeoutSeconds: createMonitorDto.timeoutSeconds,
         intervalSeconds: createMonitorDto.intervalSeconds,
         organizationId,
-      }
-    })
+      },
+    });
   }
 
-
   async getAllMonitors(organizationId: string, user: AuthUser) {
-    const {} = await this.getOrganizationWithMembership(organizationId, user.id)
+    const {} = await this.getOrganizationWithMembership(
+      organizationId,
+      user.id,
+    );
 
     return this.prisma.monitor.findMany({
       where: {
-        organizationId
-      }
-    })
+        organizationId,
+      },
+    });
   }
 
-  async getMonitorById(monitorId: string, organizationId: string,user: AuthUser) {
-    const {} = await this.getOrganizationWithMembership(organizationId, user.id);
+  async getMonitorById(
+    monitorId: string,
+    organizationId: string,
+    user: AuthUser,
+  ) {
+    const {} = await this.getOrganizationWithMembership(
+      organizationId,
+      user.id,
+    );
 
     const monitor = await this.prisma.monitor.findUnique({
       where: {
-        id: monitorId
-      }
-    })
-    if(!monitor) {
-      throw new NotFoundException(`Monitor with id ${monitorId} not found!`)
+        id: monitorId,
+      },
+    });
+    if (!monitor) {
+      throw new NotFoundException(`Monitor with id ${monitorId} not found!`);
     }
     return monitor;
   }
 
-
-  async updateMonitor(updateDto: UpdateMonitorDto,monitorId: string, organizationId: string, user: AuthUser) {
-    const {membership} = await this.getOrganizationWithMembership(organizationId, user.id);
+  async updateMonitor(
+    updateDto: UpdateMonitorDto,
+    monitorId: string,
+    organizationId: string,
+    user: AuthUser,
+  ) {
+    const { membership } = await this.getOrganizationWithMembership(
+      organizationId,
+      user.id,
+    );
     this.assertOrganizationAdmin(membership);
 
     const monitor = await this.prisma.monitor.findFirst({
@@ -62,7 +84,7 @@ export class MonitorService {
     });
 
     if (!monitor) {
-      throw new NotFoundException('Monitor not found.');
+      throw new NotFoundException("Monitor not found.");
     }
 
     return this.prisma.monitor.update({
@@ -77,31 +99,36 @@ export class MonitorService {
     });
   }
 
-
-  async deleteMonitor(monitorId: string, organizationId: string, user: AuthUser) {
-    const {membership} = await this.getOrganizationWithMembership(organizationId, user.id);
+  async deleteMonitor(
+    monitorId: string,
+    organizationId: string,
+    user: AuthUser,
+  ) {
+    const { membership } = await this.getOrganizationWithMembership(
+      organizationId,
+      user.id,
+    );
     this.assertOrganizationAdmin(membership);
 
     const monitor = await this.prisma.monitor.findFirst({
       where: {
         id: monitorId,
         organizationId,
-      }
-    })
-    if(!monitor) {
-      throw new NotFoundException('Monitor not found!');
+      },
+    });
+    if (!monitor) {
+      throw new NotFoundException("Monitor not found!");
     }
 
     return this.prisma.monitor.delete({
       where: {
         id: monitorId,
-      }
-    })
-
+      },
+    });
   }
   private async getOrganizationWithMembership(
-      organizationId: string,
-      userId: string,
+    organizationId: string,
+    userId: string,
   ) {
     const organization = await this.prisma.organization.findUnique({
       where: {
@@ -117,12 +144,12 @@ export class MonitorService {
     }
 
     const membership = organization.memberships.find(
-        (membership) => membership.userId === userId,
+      (membership) => membership.userId === userId,
     );
 
     if (!membership) {
       throw new ForbiddenException(
-          "You are not a member of this organization.",
+        "You are not a member of this organization.",
       );
     }
 
@@ -132,13 +159,43 @@ export class MonitorService {
     };
   }
 
-
-  private assertOrganizationAdmin(member: OrganizationMember){
+  private assertOrganizationAdmin(member: OrganizationMember) {
     if (member.role !== "ADMIN" && member.role !== "OWNER") {
       throw new ForbiddenException("you are not allowed to do this!");
     }
   }
 
+  async pauseMonitor(organizationId: string, monitorId: string, user: AuthUser) {
+    const { membership } = await this.getOrganizationWithMembership(
+      organizationId,
+      user.id,
+    );
+    this.assertOrganizationAdmin(membership);
 
+    return this.prisma.monitor.update({
+      where: {
+        id: monitorId
+      },
+      data:{
+        status: "PAUSED"
+      }
+    });
+  }
 
+  async resumeMonitor(organizationId: string, monitorId: string, user: AuthUser) {
+    const { membership } = await this.getOrganizationWithMembership(
+      organizationId,
+      user.id,
+    );
+    this.assertOrganizationAdmin(membership);
+
+    return this.prisma.monitor.update({
+      where: {
+        id: monitorId,
+      },
+      data: {
+        status: "ACTIVE",
+      },
+    });
+  }
 }
