@@ -88,8 +88,9 @@ model Monitor {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  checkResults CheckResult[]
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  checkResults  CheckResult[]
+  monitorChecks MonitorCheck[]
 
   @@index([organizationId])
 }
@@ -108,4 +109,26 @@ model CheckResult {
   monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
 
   @@index([monitorId, checkedAt])
+}
+
+model MonitorCheck {
+  id String @id @default(uuid())
+
+  monitorId String
+  monitor   Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+
+  status       CheckStatus
+  statusCode   Int?
+  responseTime Int?
+  errorMessage String?
+
+  checkedAt DateTime @default(now())
+
+  @@index([monitorId, checkedAt])
+}
+
+enum CheckStatus {
+  SUCCESS
+  FAILURE
+  TIMEOUT
 }
