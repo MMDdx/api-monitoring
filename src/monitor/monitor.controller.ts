@@ -82,5 +82,17 @@ export class MonitorController {
   ) {
     return this.monitorService.resumeMonitor(organizationId, monitorId, user);
   }
+
+  @Post(":monitorId/check")
+  async check(
+    @Param("organizationId") organizationId: string,
+    @Param("monitorId") monitorId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.monitorService.runCheck(organizationId, monitorId, user);
+  }
+
+
+  
 }
 

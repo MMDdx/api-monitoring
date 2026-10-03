@@ -4,10 +4,16 @@ import { CreateMonitorDto } from "./dtos/create-monitor.dto.js";
 import { AuthUser } from "../auth/types/auth-user.type.js";
 import {OrganizationMember} from "../generated/prisma/client.js";
 import {UpdateMonitorDto} from "./dtos/update-monitor.dto.js";
+import { MonitorCheckService } from './monitor-check.service.js';
+import { MonitorCheckerService } from './monitor-checker.service.js';
 
 @Injectable()
 export class MonitorService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private monitorCheckService: MonitorCheckService,
+    private monitorCheckerService: MonitorCheckerService,
+  ) {}
 
   async createMonitor(
     organizationId: string,
@@ -165,7 +171,11 @@ export class MonitorService {
     }
   }
 
-  async pauseMonitor(organizationId: string, monitorId: string, user: AuthUser) {
+  async pauseMonitor(
+    organizationId: string,
+    monitorId: string,
+    user: AuthUser,
+  ) {
     const { membership } = await this.getOrganizationWithMembership(
       organizationId,
       user.id,
@@ -174,15 +184,19 @@ export class MonitorService {
 
     return this.prisma.monitor.update({
       where: {
-        id: monitorId
+        id: monitorId,
       },
-      data:{
-        status: "PAUSED"
-      }
+      data: {
+        status: "PAUSED",
+      },
     });
   }
 
-  async resumeMonitor(organizationId: string, monitorId: string, user: AuthUser) {
+  async resumeMonitor(
+    organizationId: string,
+    monitorId: string,
+    user: AuthUser,
+  ) {
     const { membership } = await this.getOrganizationWithMembership(
       organizationId,
       user.id,
@@ -195,6 +209,38 @@ export class MonitorService {
       },
       data: {
         status: "ACTIVE",
+      },
+    });
+  }
+
+  async runCheck(organizationId: string, monitorId: string, user: AuthUser) {
+    const { membership } = await this.getOrganizationWithMembership(
+      organizationId,
+      user.id,
+    );
+
+    this.assertOrganizationAdmin(membership);
+
+    const monitor = await this.prisma.monitor.findFirst({
+      where: {
+        id: monitorId,
+        organizationId,
+      },
+    });
+
+    if (!monitor) {
+      throw new NotFoundException("Monitor not found.");
+    }
+
+    const result = await this.monitorCheckerService.check(monitor);
+
+    return this.prisma.monitorCheck.create({
+      data: {
+        monitorId: monitor.id,
+        status: result.status,
+        statusCode: result.statusCode,
+        responseTime: result.responseTime,
+        errorMessage: result.errorMessage,
       },
     });
   }
