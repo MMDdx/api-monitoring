@@ -5,10 +5,11 @@ import { MonitorCheckerService } from "./monitor-checker.service.js";
 import { MonitorCheckService } from './monitor-check.service.js';
 import { MonitorQueueService } from './monitor-queue.service.js';
 import { BullModule } from '@nestjs/bullmq';
+import { MonitorProcessor } from "./monitor.processor.js";
 
 @Module({
   controllers: [MonitorController],
-  providers: [MonitorService, MonitorCheckerService, MonitorCheckService, MonitorQueueService],
+  providers: [MonitorService, MonitorCheckerService, MonitorCheckService, MonitorQueueService, MonitorProcessor],
   imports: [BullModule.registerQueue({
     name: "monitor-checks",
   })]

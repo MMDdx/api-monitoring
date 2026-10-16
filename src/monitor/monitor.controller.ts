@@ -5,11 +5,15 @@ import type { AuthUser } from "../auth/types/auth-user.type.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import {UpdateMonitorDto} from "./dtos/update-monitor.dto.js";
+import { MonitorQueueService } from "./monitor-queue.service.js";
 
 @Controller("organizations/:organizationId/monitors")
 @UseGuards(JwtAuthGuard)
 export class MonitorController {
-  constructor(private monitorService: MonitorService) {}
+  constructor(
+    private monitorService: MonitorService,
+    private readonly monitorQueueService: MonitorQueueService,
+  ) {}
 
   @Post()
   createMonitor(
@@ -92,7 +96,9 @@ export class MonitorController {
     return this.monitorService.runCheck(organizationId, monitorId, user);
   }
 
-
-  
+  @Post("queue-test")
+  async queueTest(@Body('monitorId') monitorId: string) {
+    return this.monitorQueueService.addMonitorCheck(monitorId);
+  }
 }
 
