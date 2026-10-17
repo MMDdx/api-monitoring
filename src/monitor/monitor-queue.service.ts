@@ -13,4 +13,30 @@ export class MonitorQueueService {
       monitorId,
     });
   }
+
+  async monitorScheduleCheck(monitorId: string, intervalSeconds: number) {
+
+    return this.monitorQueue.upsertJobScheduler(
+      `monitor-${monitorId}`,
+      {
+        every: intervalSeconds * 1000,
+      },
+      {
+        name: "check-monitor",
+        data: { monitorId },
+        opts: {
+          attempts: 3,
+          backoff: {
+            type: "exponential",
+            delay: 1000,
+          },
+        },
+      },
+    );
+  }
+
+  async removeMonitorCheck(monitorId: string) {
+    return this.monitorQueue.remove(`monitor-${monitorId}`);
+  }
+
 }
