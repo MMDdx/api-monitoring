@@ -6,6 +6,7 @@ import {OrganizationMember} from "../generated/prisma/client.js";
 import {UpdateMonitorDto} from "./dtos/update-monitor.dto.js";
 import { MonitorCheckService } from './monitor-check.service.js';
 import { MonitorCheckerService } from './monitor-checker.service.js';
+import { MonitorQueueService } from "./monitor-queue.service.js";
 
 @Injectable()
 export class MonitorService {
@@ -13,6 +14,7 @@ export class MonitorService {
     private readonly prisma: PrismaService,
     private monitorCheckService: MonitorCheckService,
     private monitorCheckerService: MonitorCheckerService,
+    private monitorQueueService: MonitorQueueService,
   ) {}
 
   async createMonitor(
@@ -62,6 +64,7 @@ export class MonitorService {
     const monitor = await this.prisma.monitor.findUnique({
       where: {
         id: monitorId,
+        organizationId
       },
     });
     if (!monitor) {
@@ -203,7 +206,9 @@ export class MonitorService {
     );
     this.assertOrganizationAdmin(membership);
 
-    return this.prisma.monitor.update({
+
+
+    const activeMonitor = await this.prisma.monitor.update({
       where: {
         id: monitorId,
       },
@@ -211,6 +216,11 @@ export class MonitorService {
         status: "ACTIVE",
       },
     });
+    await this.monitorQueueService.monitorScheduleCheck(
+      monitorId,
+      activeMonitor.intervalSeconds,
+    );
+    return activeMonitor;
   }
 
   async runCheck(organizationId: string, monitorId: string, user: AuthUser) {
