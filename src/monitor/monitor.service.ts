@@ -7,6 +7,7 @@ import {UpdateMonitorDto} from "./dtos/update-monitor.dto.js";
 import { MonitorCheckService } from './monitor-check.service.js';
 import { MonitorCheckerService } from './monitor-checker.service.js';
 import { MonitorQueueService } from "./monitor-queue.service.js";
+import { GetChecksQueryDto } from './dtos/get-checks-query.dto.js';
 
 @Injectable()
 export class MonitorService {
@@ -96,7 +97,7 @@ export class MonitorService {
       throw new NotFoundException("Monitor not found.");
     }
 
-    return this.prisma.monitor.update({
+    const currentMonitor = await this.prisma.monitor.update({
       where: {
         id: monitorId,
       },
@@ -106,6 +107,11 @@ export class MonitorService {
         timeoutSeconds: updateDto.timeoutSeconds,
       },
     });
+    if (currentMonitor.status === "ACTIVE"){
+      await this.monitorQueueService.monitorScheduleCheck(monitorId, currentMonitor.intervalSeconds)
+    }
+
+    return currentMonitor;
   }
 
   async deleteMonitor(
@@ -129,12 +135,15 @@ export class MonitorService {
       throw new NotFoundException("Monitor not found!");
     }
 
-    return this.prisma.monitor.delete({
+    const currentMonitor =await this.prisma.monitor.delete({
       where: {
         id: monitorId,
       },
     });
+    await this.monitorQueueService.removeMonitorCheck(monitorId);
+    return currentMonitor;
   }
+
   private async getOrganizationWithMembership(
     organizationId: string,
     userId: string,
@@ -185,7 +194,7 @@ export class MonitorService {
     );
     this.assertOrganizationAdmin(membership);
 
-    return this.prisma.monitor.update({
+    const monitor= await this.prisma.monitor.update({
       where: {
         id: monitorId,
       },
@@ -193,6 +202,8 @@ export class MonitorService {
         status: "PAUSED",
       },
     });
+    await this.monitorQueueService.removeMonitorCheck(monitorId);
+    return monitor;
   }
 
   async resumeMonitor(
@@ -253,5 +264,44 @@ export class MonitorService {
         errorMessage: result.errorMessage,
       },
     });
+  }
+
+  async getChecks(organizationId: string, monitorId: string, user: AuthUser, query: GetChecksQueryDto) {
+    await this.getOrganizationWithMembership(organizationId,user.id);
+
+    const monitor = await this.prisma.monitor.findFirst({
+      where:{
+        id: monitorId,
+        organizationId,
+      },
+      select:{
+        id : true
+      }
+    })
+
+    if (!monitor) {
+      throw new NotFoundException("Monitor not found.");
+    }
+
+    const skip = (query.page - 1) * query.limit;
+
+    const [checks, total] = await Promise.all([
+      this.prisma.monitorCheck.findMany({
+        where: { monitorId: monitor.id },
+        orderBy: { checkedAt: "desc" },
+        skip,
+        take: query.limit,
+      }),
+      this.prisma.monitorCheck.count({
+        where: { monitorId: monitor.id },
+      }),
+    ]);
+
+    return {
+      data: checks,
+      total,
+      limit: query.limit,
+      totalPages: Math.ceil(total / query.limit)
+    }
   }
 }

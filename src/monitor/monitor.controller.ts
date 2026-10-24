@@ -1,4 +1,4 @@
-import {Body, Controller, Delete, Get, Param, Patch, Post, UseGuards} from "@nestjs/common";
+import {Body, Controller, Delete, Get, Param, Patch, Post, UseGuards, Query} from "@nestjs/common";
 import { MonitorService } from "./monitor.service.js";
 import { CreateMonitorDto } from "./dtos/create-monitor.dto.js";
 import type { AuthUser } from "../auth/types/auth-user.type.js";
@@ -6,6 +6,8 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import {UpdateMonitorDto} from "./dtos/update-monitor.dto.js";
 import { MonitorQueueService } from "./monitor-queue.service.js";
+import {GetChecksQueryDto} from "./dtos/get-checks-query.dto.js";
+
 
 @Controller("organizations/:organizationId/monitors")
 @UseGuards(JwtAuthGuard)
@@ -87,13 +89,19 @@ export class MonitorController {
     return this.monitorService.resumeMonitor(organizationId, monitorId, user);
   }
 
-  @Post(":monitorId/check")
+  @Get(":monitorId/checks")
   async check(
     @Param("organizationId") organizationId: string,
     @Param("monitorId") monitorId: string,
     @CurrentUser() user: AuthUser,
+    @Query() query: GetChecksQueryDto,
   ) {
-    return this.monitorService.runCheck(organizationId, monitorId, user);
+    return this.monitorService.getChecks(
+      organizationId,
+      monitorId,
+      user,
+      query,
+    );
   }
 
   @Post("queue-test")
