@@ -2,12 +2,13 @@ import {ForbiddenException, Injectable, NotFoundException} from '@nestjs/common'
 import { PrismaService } from "../prisma/prisma.service.js";
 import { CreateMonitorDto } from "./dtos/create-monitor.dto.js";
 import { AuthUser } from "../auth/types/auth-user.type.js";
-import {OrganizationMember} from "../generated/prisma/client.js";
+import {CheckStatus, OrganizationMember} from "../generated/prisma/client.js";
 import {UpdateMonitorDto} from "./dtos/update-monitor.dto.js";
 import { MonitorCheckService } from './monitor-check.service.js';
 import { MonitorCheckerService } from './monitor-checker.service.js';
 import { MonitorQueueService } from "./monitor-queue.service.js";
 import { GetChecksQueryDto } from './dtos/get-checks-query.dto.js';
+import {MonitorStatsQueryDto} from "./dtos/monitor-stats-query.dto.js";
 
 @Injectable()
 export class MonitorService {
@@ -304,4 +305,62 @@ export class MonitorService {
       totalPages: Math.ceil(total / query.limit)
     }
   }
+
+  async getMonitorChecksStats(organizationId: string,monitorId: string, query: MonitorStatsQueryDto, user: AuthUser) {
+      await this.getOrganizationWithMembership(organizationId,user.id)
+
+    const endDate = new Date();
+    const startDate = new Date(endDate);
+
+    switch (query.period) {
+      case '1h':
+        startDate.setHours(startDate.getHours() - 1);
+        break;
+      case '7d':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case '24h':
+      default:
+        startDate.setHours(startDate.getHours() - 24);
+        break;
+    }
+
+    const [stats] = await this.prisma.$queryRaw<
+        {
+          totalChecks: number;
+          failedChecks: number;
+          successfulChecks: number;
+          averageResponseTime: number | null;
+        }[]
+    >`
+      SELECT
+        COUNT(*)::int AS "totalChecks",
+        COUNT(*) FILTER (
+      WHERE status IN ('FAILURE', 'TIMEOUT')
+    )::int AS "failedChecks",
+        COUNT(*) FILTER (
+      WHERE status = 'SUCCESS'
+    )::int AS "successfulChecks",
+        AVG("responseTime") FILTER (
+      WHERE status = 'SUCCESS'
+    )::float8 AS "averageResponseTime"
+      FROM "MonitorCheck"
+      WHERE "monitorId" = ${monitorId}
+        AND "checkedAt" >= ${startDate}
+        AND "checkedAt" < ${endDate}
+    `;
+
+    const uptimePercentage = stats.totalChecks === 0 ? null : (stats.successfulChecks / stats.totalChecks) * 100;
+
+    return {
+      period: query.period,
+      totalChecks: stats.totalChecks,
+      successfulChecks: stats.successfulChecks,
+      failedChecks: stats.failedChecks,
+      uptimePercentage,
+      averageResponseTime: stats.averageResponseTime,
+    };
+  }
+
+
 }
