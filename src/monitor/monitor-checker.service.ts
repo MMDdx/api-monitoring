@@ -1,5 +1,4 @@
 import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service.js";
 import { CheckStatus, Monitor } from "../generated/prisma/client.js";
 
 export interface MonitorCheckResult {

@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { MonitorCheckerService } from './monitor-checker.service.js';
 import { MonitorCheckService } from './monitor-check.service.js';
 import { MonitorStatus } from '../generated/prisma/enums.js';
+import { MonitorQueueService } from './monitor-queue.service.js';
 
 @Processor("monitor-checks")
 export class MonitorProcessor extends WorkerHost {
@@ -11,6 +12,7 @@ export class MonitorProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly monitorCheckerService: MonitorCheckerService,
     private readonly monitorCheckService: MonitorCheckService,
+    private readonly monitorQueueService : MonitorQueueService
   ) {
     super();
   }
@@ -48,6 +50,28 @@ export class MonitorProcessor extends WorkerHost {
 
     await this.monitorCheckService.createCheck(monitor.id, result);
 
+    const consecutiveFailures = (
+      result.status === "SUCCESS" ? 0 : monitor.consecutiveFailures + 1
+    );
+
+    await this.prisma.monitor.update({
+      where: {
+        id: monitorId,
+      },
+      data: {
+        consecutiveFailures,
+        ...(consecutiveFailures >= 6 ? {status : MonitorStatus.PAUSED} : {}),
+      },
+    });
+
+    if (consecutiveFailures >= 6) {
+      await this.monitorQueueService.removeMonitorCheck(monitorId);
+
+      // TO BE IMPLEMENTED: notify the use
+      return;
+    }
     console.log("MonitorCheck saved successfully!");
   }
+
+
 }
