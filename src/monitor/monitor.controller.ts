@@ -7,6 +7,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import {UpdateMonitorDto} from "./dtos/update-monitor.dto.js";
 import { MonitorQueueService } from "./monitor-queue.service.js";
 import {GetChecksQueryDto} from "./dtos/get-checks-query.dto.js";
+import {MonitorStatsQueryDto} from "./dtos/monitor-stats-query.dto.js";
 
 
 @Controller("organizations/:organizationId/monitors")
@@ -90,7 +91,7 @@ export class MonitorController {
   }
 
   @Get(":monitorId/checks")
-  async check(
+  check(
     @Param("organizationId") organizationId: string,
     @Param("monitorId") monitorId: string,
     @CurrentUser() user: AuthUser,
@@ -107,6 +108,11 @@ export class MonitorController {
   @Post("queue-test")
   async queueTest(@Body('monitorId') monitorId: string) {
     return this.monitorQueueService.addMonitorCheck(monitorId);
+  }
+
+  @Get(":monitorId/stats")
+  getMonitorChecksStats(@Param("organizationId") organizationId: string,@Param("monitorId") monitorId: string, @Query() period: MonitorStatsQueryDto,@CurrentUser() user: AuthUser) {
+    return this.monitorService.getMonitorChecksStats(organizationId, monitorId, period, user);
   }
 }
 
