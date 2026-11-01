@@ -3,8 +3,9 @@ import { Job } from "bullmq";
 import { PrismaService } from '../prisma/prisma.service.js';
 import { MonitorCheckerService } from './monitor-checker.service.js';
 import { MonitorCheckService } from './monitor-check.service.js';
-import { MonitorStatus } from '../generated/prisma/enums.js';
+import { MonitorStatus, OrganizationRole } from "../generated/prisma/enums.js";
 import { MonitorQueueService } from './monitor-queue.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 
 @Processor("monitor-checks")
 export class MonitorProcessor extends WorkerHost {
@@ -12,7 +13,8 @@ export class MonitorProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly monitorCheckerService: MonitorCheckerService,
     private readonly monitorCheckService: MonitorCheckService,
-    private readonly monitorQueueService : MonitorQueueService
+    private readonly monitorQueueService : MonitorQueueService,
+    private readonly notificationsService : NotificationsService,
   ) {
     super();
   }
@@ -65,10 +67,50 @@ export class MonitorProcessor extends WorkerHost {
     });
 
     if (consecutiveFailures >= 6) {
-      await this.monitorQueueService.removeMonitorCheck(monitorId);
+      console.log("FAILURE THRESHOLD REACHED!");
 
-      // TO BE IMPLEMENTED: notify the use
-      return;
+      await this.monitorQueueService.removeMonitorCheck(monitorId);
+      console.log("Recurring scheduler removed.");
+
+      const recipients = await this.prisma.organizationMember.findMany({
+        where: {
+          organizationId: monitor.organizationId,
+          role: {
+            in: [OrganizationRole.OWNER, OrganizationRole.ADMIN],
+          },
+        },
+        select: {
+          user: {
+            select: {
+              email: true,
+            },
+          },
+        },
+      });
+
+      console.log("Recipients found:", recipients.length);
+      console.log(
+        "Recipient emails:",
+        recipients.map((r) => r.user.email),
+      );
+
+      for (const recipient of recipients) {
+        console.log("Sending email to:", recipient.user.email);
+
+        const info = await this.notificationsService.sendEmail(
+          recipient.user.email,
+          "Monitor Automatically Paused",
+          `Your monitor "${monitor.name}" has been automatically paused after 6 consecutive failures.
+
+URL: ${monitor.url}
+
+Please investigate the issue and resume the monitor when appropriate.`,
+        );
+
+        console.log("Email result:", info);
+      }
+
+      console.log("Notification process completed.");
     }
     console.log("MonitorCheck saved successfully!");
   }

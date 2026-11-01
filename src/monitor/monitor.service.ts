@@ -226,6 +226,7 @@ export class MonitorService {
       },
       data: {
         status: "ACTIVE",
+        consecutiveFailures : 0
       },
     });
     await this.monitorQueueService.monitorScheduleCheck(
