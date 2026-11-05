@@ -52,21 +52,63 @@ export class MonitorProcessor extends WorkerHost {
 
     await this.monitorCheckService.createCheck(monitor.id, result);
 
-    const consecutiveFailures = (
-      result.status === "SUCCESS" ? 0 : monitor.consecutiveFailures + 1
-    );
 
-    await this.prisma.monitor.update({
-      where: {
-        id: monitorId,
-      },
-      data: {
-        consecutiveFailures,
-        ...(consecutiveFailures >= 6 ? {status : MonitorStatus.PAUSED} : {}),
-      },
+    await this.monitorCheckService.createCheck(monitor.id, result);
+    console.log("MonitorCheck saved successfully!");
+
+    // Update the failure counter and decide whether to pause.
+    const shouldNotify = await this.prisma.$transaction(async (tx) => {
+      // 1. Successful check: reset the counter.
+      if (result.status === "SUCCESS") {
+        await tx.monitor.updateMany({
+          where: {
+            id: monitorId,
+            status: MonitorStatus.ACTIVE,
+          },
+          data: {
+            consecutiveFailures: 0,
+          },
+        });
+
+        return false;
+      }
+
+      // 2. Failed check: increment the counter atomically.
+      const incrementResult = await tx.monitor.updateMany({
+        where: {
+          id: monitorId,
+          status: MonitorStatus.ACTIVE,
+        },
+        data: {
+          consecutiveFailures: {
+            increment: 1,
+          },
+        },
+      });
+
+      if (incrementResult.count === 0) {
+        return false;
+      }
+
+      // 3. Check whether the threshold has been reached.
+      const pauseResult = await tx.monitor.updateMany({
+        where: {
+          id: monitorId,
+          status: MonitorStatus.ACTIVE,
+          consecutiveFailures: {
+            gte: 6,
+          },
+        },
+        data: {
+          status: MonitorStatus.PAUSED,
+        },
+      });
+
+      return pauseResult.count === 1;
     });
 
-    if (consecutiveFailures >= 6) {
+    // 4. Only the job that successfully paused the monitor gets here.
+    if (shouldNotify) {
       console.log("FAILURE THRESHOLD REACHED!");
 
       await this.monitorQueueService.removeMonitorCheck(monitorId);
@@ -89,29 +131,35 @@ export class MonitorProcessor extends WorkerHost {
       });
 
       console.log("Recipients found:", recipients.length);
-      console.log(
-        "Recipient emails:",
-        recipients.map((r) => r.user.email),
-      );
 
-      for (const recipient of recipients) {
-        console.log("Sending email to:", recipient.user.email);
-
-        const info = await this.notificationsService.sendEmail(
-          recipient.user.email,
-          "Monitor Automatically Paused",
-          `Your monitor "${monitor.name}" has been automatically paused after 6 consecutive failures.
+      const results = await Promise.allSettled(
+        recipients.map((recipient) =>
+          this.notificationsService.sendEmail(
+            recipient.user.email,
+            "Monitor Automatically Paused",
+            `Your monitor "${monitor.name}" has been automatically paused after 6 consecutive failures.
 
 URL: ${monitor.url}
 
 Please investigate the issue and resume the monitor when appropriate.`,
-        );
+          ),
+        ),
+      );
 
-        console.log("Email result:", info);
-      }
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          console.error(
+            `Failed to notify ${recipients[index].user.email}:`,
+            result.reason,
+          );
+        }
+      });
 
       console.log("Notification process completed.");
     }
+
+
+
     console.log("MonitorCheck saved successfully!");
   }
 
