@@ -10,6 +10,7 @@ import { MonitorModule } from './monitor/monitor.module.js';
 import {BullModule} from "@nestjs/bullmq";
 import { createConnection } from "net";
 import { NotificationsModule } from './notifications/notifications.module.js';
+import { IncidentModule } from './incident/incident.module.js';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
 
     }),
     NotificationsModule,
+    IncidentModule,
   ],
 
   controllers: [AppController],
