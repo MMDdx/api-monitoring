@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from "../prisma/prisma.service.js";
-import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import type { AuthUser } from "../auth/types/auth-user.type.js";
 import { CreateIncidentDto } from "./dtos/create-incident.dto.js";
 
@@ -8,7 +7,7 @@ import { CreateIncidentDto } from "./dtos/create-incident.dto.js";
 export class IncidentService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getAllIncidents(@CurrentUser() currentUser: AuthUser) {
+  async getAllIncidents(currentUser: AuthUser) {
     return this.prisma.incident.findMany()
   }
 
@@ -21,7 +20,7 @@ export class IncidentService {
     })
   }
 
-  async getIncident(organizationId:string, incidentId: string, @CurrentUser() currentUser: AuthUser) {
+  async getIncident(organizationId:string, incidentId: string, currentUser: AuthUser) {
     return this.prisma.incident.findFirst({
       where: {
         id: incidentId

@@ -8,17 +8,18 @@ import { BullModule } from '@nestjs/bullmq';
 import { MonitorProcessor } from "./monitor.processor.js";
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { MonitorLockService } from './monitor-lock.service.js';
+import { CommonModule } from "../common/common.module.js";
+import { NotificationsModule } from "../notifications/notifications.module.js";
 
 @Module({
   controllers: [MonitorController],
-
   providers: [MonitorService, MonitorCheckerService,
     MonitorCheckService, MonitorQueueService,
-    MonitorProcessor, NotificationsService
+    MonitorProcessor
   , MonitorLockService],
 
   imports: [BullModule.registerQueue({
     name: "monitor-checks",
-  })]
+  }), CommonModule, NotificationsModule],
 })
 export class MonitorModule {}

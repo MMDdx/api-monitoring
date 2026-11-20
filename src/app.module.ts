@@ -11,6 +11,7 @@ import {BullModule} from "@nestjs/bullmq";
 import { createConnection } from "net";
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { IncidentModule } from './incident/incident.module.js';
+import { CommonModule } from "./common/common.module.js";
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { IncidentModule } from './incident/incident.module.js';
     }),
     NotificationsModule,
     IncidentModule,
+    CommonModule
   ],
 
   controllers: [AppController],

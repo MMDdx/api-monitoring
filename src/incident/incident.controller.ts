@@ -1,12 +1,12 @@
 import { Body, Controller, Get, Post, Query, UseGuards } from "@nestjs/common";
-import { AuthGuard } from "@nestjs/passport";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import  type { AuthUser } from "../auth/types/auth-user.type.js";
 import { IncidentService } from "./incident.service.js";
 import { CreateIncidentDto } from "./dtos/create-incident.dto.js";
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
 @Controller('incident')
-@UseGuards(AuthGuard)
+@UseGuards(JwtAuthGuard)
 export class IncidentController {
   constructor(private readonly incidentService: IncidentService) {}
   
@@ -15,8 +15,8 @@ export class IncidentController {
     return this.incidentService.getAllIncidents(currentUser);
   }
 
-  @Post()
-  createIncident(@Body() createIncidentDto: CreateIncidentDto, @CurrentUser() currentUser: AuthUser) {
+  @Post("/:organizationId")
+  createIncident(@Query() organizationId:string ,@Body() createIncidentDto: CreateIncidentDto, @CurrentUser() currentUser: AuthUser) {
     return this.incidentService.createIncident(createIncidentDto, currentUser)
   }
 

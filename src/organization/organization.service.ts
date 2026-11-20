@@ -11,10 +11,12 @@ import { AuthUser } from "../auth/types/auth-user.type.js";
 import slugify from "slugify";
 import {AddMemberToOrganizationDto} from "./dtos/add-member.dto.js";
 import { OrganizationMember, Prisma } from "../generated/prisma/client.js";
+import { OrganizationAccessService } from "../common/organization-access.service.js";
 
 @Injectable()
 export class OrganizationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService,
+              private organizationAccessService: OrganizationAccessService,) {}
 
   async createOrganization(dto: createOrganizationDto, user: AuthUser) {
     return await this.prisma.organization.create({
@@ -57,9 +59,9 @@ export class OrganizationService {
   }
 
   async addMemberToOrganization(id: string, addMemberDto: AddMemberToOrganizationDto, user: AuthUser,) {
-    const { organization, membership } = await this.getOrganizationWithMembership(id, user.id);
+    const { organization, membership } = await this.organizationAccessService.getOrganizationWithMembership(id, user.id);
 
-    this.assertOrganizationAdmin(membership);
+    this.organizationAccessService.assertOrganizationAdmin(membership);
 
       try {
         return await this.prisma.organizationMember.create({
@@ -84,9 +86,13 @@ export class OrganizationService {
   }
 
   async deleteMemberFromOrganization(id: string, memberId: string, user: AuthUser) {
-    const { membership,organization} = await this.getOrganizationWithMembership(id, user.id);
+    const { membership, organization } =
+      await this.organizationAccessService.getOrganizationWithMembership(
+        id,
+        user.id,
+      );
 
-    this.assertOrganizationAdmin(membership);
+    this.organizationAccessService.assertOrganizationAdmin(membership);
 
     if (membership.role === "ADMIN"){
       const targetMembership = await this.prisma.organizationMember.findUnique({
@@ -116,42 +122,4 @@ export class OrganizationService {
 
   }
 
-  private async getOrganizationWithMembership(
-    organizationId: string,
-    userId: string,
-  ) {
-    const organization = await this.prisma.organization.findUnique({
-      where: {
-        id: organizationId,
-      },
-      include: {
-        memberships: true,
-      },
-    });
-
-    if (!organization) {
-      throw new NotFoundException("Organization not found!");
-    }
-
-    const membership = organization.memberships.find(
-      (membership) => membership.userId === userId,
-    );
-
-    if (!membership) {
-      throw new ForbiddenException(
-        "You are not a member of this organization.",
-      );
-    }
-
-    return {
-      organization,
-      membership,
-    };
-  }
-
-  private assertOrganizationAdmin(member: OrganizationMember){
-    if (member.role !== "ADMIN" && member.role !== "OWNER") {
-      throw new ForbiddenException("you are not allowed to do this!");
-    }
-  }
 }
